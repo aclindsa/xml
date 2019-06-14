@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -136,6 +137,12 @@ func NewEncoder(w io.Writer) *Encoder {
 	e := &Encoder{printer{Writer: bufio.NewWriter(w)}}
 	e.p.encoder = e
 	return e
+}
+
+// SetDisableAutoClose disables auto-closing for the provided tags
+func (enc *Encoder) SetDisableAutoClose(tagNames ...string) {
+	sort.Strings(tagNames)
+	enc.p.disableAutoClose = tagNames
 }
 
 // Indent sets the encoder to generate XML in which each element
@@ -307,6 +314,8 @@ type printer struct {
 	attrPrefix map[string]string // map name space -> prefix
 	prefixes   []string
 	tags       []Name
+
+	disableAutoClose []string
 }
 
 // createAttrPrefix finds the name space prefix attribute to use for the given name space,
@@ -729,6 +738,10 @@ func (p *printer) writeEnd(name Name) error {
 		return fmt.Errorf("xml: end tag </%s> in namespace %s does not match start tag <%s> in namespace %s", name.Local, name.Space, top.Local, top.Space)
 	}
 	p.tags = p.tags[:len(p.tags)-1]
+	if sortedContains(p.disableAutoClose, name.Local) {
+		p.popPrefix()
+		return nil
+	}
 
 	p.writeIndent(-1)
 	p.WriteByte('<')
@@ -1038,4 +1051,9 @@ func isEmptyValue(v reflect.Value) bool {
 		return v.IsNil()
 	}
 	return false
+}
+
+func sortedContains(haystack []string, needle string) bool {
+	i := sort.SearchStrings(haystack, needle)
+	return i < len(haystack) && haystack[i] == needle
 }

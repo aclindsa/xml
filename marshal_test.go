@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -2439,5 +2440,109 @@ func TestIssue16158(t *testing.T) {
 	}{})
 	if err == nil {
 		t.Errorf("Unmarshal: expected error, got nil")
+	}
+}
+
+func TestDisableAutoClose(t *testing.T) {
+	nocloseTag := []string{"noclose"}
+	for _, tc := range []struct {
+		description string
+		value       interface{}
+		disable     []string
+		expected    string
+	}{
+		{
+			description: "don't close field",
+			value: struct {
+				XMLName Name   `xml:"thing"`
+				A       string `xml:"noclose"`
+			}{
+				A: "some value",
+			},
+			disable:  nocloseTag,
+			expected: "<thing><noclose>some value</thing>",
+		},
+		{
+			description: "don't close aggregate",
+			value: struct {
+				XMLName Name   `xml:"noclose"`
+				A       string `xml:"thing"`
+			}{
+				A: "some value",
+			},
+			disable:  nocloseTag,
+			expected: "<noclose><thing>some value</thing>",
+		},
+		{
+			description: "don't close multiple fields",
+			value: struct {
+				XMLName Name   `xml:"thing"`
+				A       string `xml:"a"`
+				B       string `xml:"b"`
+			}{
+				A: "some A",
+				B: "some B",
+			},
+			disable:  []string{"a", "b"},
+			expected: "<thing><a>some A<b>some B</thing>",
+		},
+	} {
+		t.Run(tc.description, func(t *testing.T) {
+			buf := bytes.NewBufferString("")
+			enc := NewEncoder(buf)
+			enc.SetDisableAutoClose(tc.disable...)
+
+			err := enc.Encode(tc.value)
+			if err != nil {
+				t.Fatalf("Failed to encode: %s", err)
+			}
+			result := buf.String()
+			want := tc.expected
+			if result != want {
+				t.Errorf("enc.Encode: expected %s; got %s", want, result)
+			}
+		})
+	}
+}
+
+func TestSortedContains(t *testing.T) {
+	for _, tc := range []struct {
+		haystack []string
+		needle   string
+		contains bool
+	}{
+		{
+			haystack: []string{},
+			needle:   "a",
+			contains: false,
+		},
+		{
+			haystack: []string{"a"},
+			needle:   "a",
+			contains: true,
+		},
+		{
+			haystack: []string{"a", "b", "c"},
+			needle:   "a",
+			contains: true,
+		},
+		{
+			haystack: []string{"a", "b", "c"},
+			needle:   "b",
+			contains: true,
+		},
+		{
+			haystack: []string{"a", "b", "c"},
+			needle:   "d",
+			contains: false,
+		},
+	} {
+		t.Run("", func(t *testing.T) {
+			sort.Strings(tc.haystack) // assumes pre-sorted
+			result := sortedContains(tc.haystack, tc.needle)
+			if result != tc.contains {
+				t.Errorf("sortedContains: contains should be %t; needle = %s; haystack = %v", tc.contains, tc.needle, tc.haystack)
+			}
+		})
 	}
 }
