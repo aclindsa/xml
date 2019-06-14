@@ -145,6 +145,11 @@ func (enc *Encoder) SetDisableAutoClose(tagNames ...string) {
 	enc.p.disableAutoClose = tagNames
 }
 
+// CarriageReturn enables or disables use of the carriage return '\r\n' when writing new lines
+func (enc *Encoder) CarriageReturn(enable bool) {
+	enc.p.carriageReturn = enable
+}
+
 // Indent sets the encoder to generate XML in which each element
 // begins on a new indented line that starts with prefix and is followed by
 // one or more copies of indent according to the nesting depth.
@@ -316,6 +321,7 @@ type printer struct {
 	tags       []Name
 
 	disableAutoClose []string
+	carriageReturn   bool
 }
 
 // createAttrPrefix finds the name space prefix attribute to use for the given name space,
@@ -972,6 +978,9 @@ func (p *printer) writeIndent(depthDelta int) {
 		p.indentedIn = false
 	}
 	if p.putNewline {
+		if p.carriageReturn {
+			p.WriteByte('\r')
+		}
 		p.WriteByte('\n')
 	} else {
 		p.putNewline = true
