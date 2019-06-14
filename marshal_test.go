@@ -2546,3 +2546,27 @@ func TestSortedContains(t *testing.T) {
 		})
 	}
 }
+
+func TestCarriageReturn(t *testing.T) {
+	buf := bytes.NewBufferString("")
+	enc := NewEncoder(buf)
+	enc.Indent("", "\t")
+	enc.CarriageReturn(true)
+
+	err := enc.Encode(struct {
+		XMLName Name   `xml:"thing"`
+		A       string `xml:"a"`
+		B       string `xml:"b"`
+	}{
+		A: "some A",
+		B: "some B",
+	})
+	if err != nil {
+		t.Fatalf("Failed to encode: %s", err)
+	}
+	result := buf.String()
+	want := "<thing>\r\n\t<a>some A</a>\r\n\t<b>some B</b>\r\n</thing>"
+	if result != want {
+		t.Errorf("enc.Encode:\nexpected %q;\n     got %q", want, result)
+	}
+}
