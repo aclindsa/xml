@@ -746,6 +746,7 @@ func (p *printer) writeEnd(name Name) error {
 	p.tags = p.tags[:len(p.tags)-1]
 	if sortedContains(p.disableAutoClose, name.Local) {
 		p.popPrefix()
+		p.writeIndent(-2)
 		return nil
 	}
 

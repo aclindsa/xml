@@ -2449,6 +2449,7 @@ func TestDisableAutoClose(t *testing.T) {
 		description string
 		value       interface{}
 		disable     []string
+		indent      bool
 		expected    string
 	}{
 		{
@@ -2486,11 +2487,32 @@ func TestDisableAutoClose(t *testing.T) {
 			disable:  []string{"a", "b"},
 			expected: "<thing><a>some A<b>some B</thing>",
 		},
+		{
+			description: "dedent twice after unclosed field",
+			value: struct {
+				XMLName Name `xml:"thing"`
+				A       struct {
+					B string `xml:"b"`
+				} `xml:"a"`
+			}{
+				A: struct {
+					B string `xml:"b"`
+				}{
+					B: "some B",
+				},
+			},
+			indent:   true,
+			disable:  []string{"b"},
+			expected: "<thing>\n\t<a>\n\t\t<b>some B\n\t</a>\n</thing>",
+		},
 	} {
 		t.Run(tc.description, func(t *testing.T) {
 			buf := bytes.NewBufferString("")
 			enc := NewEncoder(buf)
 			enc.SetDisableAutoClose(tc.disable...)
+			if tc.indent {
+				enc.Indent("", "\t")
+			}
 
 			err := enc.Encode(tc.value)
 			if err != nil {
