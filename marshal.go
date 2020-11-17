@@ -156,6 +156,11 @@ func (enc *Encoder) CarriageReturn(enable bool) {
 func (enc *Encoder) Indent(prefix, indent string) {
 	enc.p.prefix = prefix
 	enc.p.indent = indent
+	enc.p.doindent = true
+}
+
+func (enc *Encoder) NoIndent() {
+	enc.p.doindent = false
 }
 
 // Encode writes the XML encoding of v to the stream.
@@ -312,6 +317,7 @@ type printer struct {
 	seq        int
 	indent     string
 	prefix     string
+	doindent   bool
 	depth      int
 	indentedIn bool
 	putNewline bool
@@ -967,7 +973,7 @@ func (p *printer) cachedWriteError() error {
 }
 
 func (p *printer) writeIndent(depthDelta int) {
-	if len(p.prefix) == 0 && len(p.indent) == 0 {
+	if !p.doindent {
 		return
 	}
 	if depthDelta < 0 {
